@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum BrandStatus {
+  UNTOUCHED
+  EMAILED
+  FOLLOW_UP
+  APPROVED
+  REJECTED
+}
+
+enum VendorType {
+  RETAILER
+  WHOLESALER
+  DISTRIBUTOR
+  MANUFACTURER
+  BRAND_OWNER
+  DROPSHIPPER
+  OTHER
+}
+
+enum Marketplace {
+  AMAZON
+  WALMART
+  SHOPIFY
+  TIKTOK
+  EBAY
+  ETSY
+  OTHER
+}
+
+enum MailProvider {
+  DEMO
+  IMAP
+}
+
+enum MailFolder {
+  INBOX
+  SENT
+  DRAFT
+}
+
+enum EmailKind {
+  OUTREACH
+  FOLLOW_UP
+  REPLY
+  OTHER
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  brands    Brand[]
+}
+
+model Client {
+  id           String      @id @default(cuid())
+  name         String
+  storeName    String?
+  businessName String?
+  email        String?
+  phone        String?
+  domains      String[]
+  website      String?
+  instagram    String?
+  facebook     String?
+  tiktok       String?
+  linkedin     String?
+  address      String?
+  marketplace  Marketplace @default(AMAZON)
+  notes        String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  brands       Brand[]
+  mailboxes    Mailbox[]
+}
+
+model Brand {
+  id             String      @id @default(cuid())
+  name           String
+  categoryId     String?
+  category       Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  vendorType     VendorType  @default(BRAND_OWNER)
+  status         BrandStatus @default(UNTOUCHED)
+  clientId       String?
+  client         Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  mailboxId      String?
+  mailbox        Mailbox?    @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
+  contactName    String?
+  email          String?
+  phone          String?
+  website        String?
+  instagram      String?
+  facebook       String?
+  tiktok         String?
+  linkedin       String?
+  address        String?
+  description    String?
+  firstEmailedAt DateTime?
+  lastEmailedAt  DateTime?
+  repliedAt      DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  emails         EmailMessage[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model Mailbox {
+  id           String         @id @default(cuid())
+  clientId     String
+  client       Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  address      String         @unique
+  displayName  String?
+  provider     MailProvider   @default(DEMO)
+  imapHost     String?
+  imapPort     Int?
+  smtpHost     String?
+  smtpPort     Int?
+  username     String?
+  passwordEnc  String?
+  sentFolder   String?
+  draftsFolder String?
+  lastSyncedAt DateTime?
+  lastError    String?
+  createdAt    DateTime       @default(now())
+  messages     EmailMessage[]
+  brands       Brand[]
+}
+
+model EmailMessage {
+  id          String     @id @default(cuid())
+  mailboxId   String
+  mailbox     Mailbox    @relation(fields: [mailboxId], references: [id], onDelete: Cascade)
+  brandId     String?
+  brand       Brand?     @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  folder      MailFolder
+  kind        EmailKind  @default(OTHER)
+  messageId   String
+  inReplyTo   String?
+  imapUid     Int?
+  fromAddress String
+  toAddress   String
+  subject     String
+  body        String
+  date        DateTime   @default(now())
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([mailboxId, folder, messageId])
+  @@index([brandId, folder])
+}
